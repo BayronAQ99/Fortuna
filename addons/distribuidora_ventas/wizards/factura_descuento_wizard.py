@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class FacturaDescuentoWizard(models.TransientModel):
@@ -15,12 +15,14 @@ class FacturaDescuentoWizard(models.TransientModel):
     @api.constrains('porcentaje')
     def _check_porcentaje(self):
         for wizard in self:
-            if not 0 < wizard.porcentaje <= 100:
+            if not 0 < wizard.porcentaje < 100:
                 raise ValidationError(_(
-                    "El porcentaje de descuento debe ser mayor a 0 y menor o igual a 100."
+                    "El porcentaje de descuento debe ser mayor a 0 y menor a 100."
                 ))
 
     def action_aplicar(self):
         self.ensure_one()
         product_lines = self.move_id.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
+        if not product_lines:
+            raise UserError(_("La factura no tiene líneas de producto a las que aplicar un descuento."))
         product_lines.write({'discount': self.porcentaje})

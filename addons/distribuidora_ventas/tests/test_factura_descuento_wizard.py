@@ -50,6 +50,13 @@ class TestFacturaDescuentoWizard(TransactionCase):
                 'porcentaje': 150.0,
             })
 
+    def test_rejects_percentage_of_exactly_100(self):
+        with self.assertRaises(ValidationError):
+            self.env['distribuidora.factura.descuento.wizard'].create({
+                'move_id': self.move.id,
+                'porcentaje': 100.0,
+            })
+
     def test_rejects_zero_percentage(self):
         with self.assertRaises(ValidationError):
             self.env['distribuidora.factura.descuento.wizard'].create({
@@ -62,3 +69,17 @@ class TestFacturaDescuentoWizard(TransactionCase):
             active_id=self.move.id
         ).create({'porcentaje': 10.0})
         self.assertEqual(wizard.move_id, self.move)
+
+    def test_action_aplicar_without_product_lines_raises(self):
+        from odoo.exceptions import UserError
+
+        empty_move = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner.id,
+        })
+        wizard = self.env['distribuidora.factura.descuento.wizard'].create({
+            'move_id': empty_move.id,
+            'porcentaje': 10.0,
+        })
+        with self.assertRaises(UserError):
+            wizard.action_aplicar()
