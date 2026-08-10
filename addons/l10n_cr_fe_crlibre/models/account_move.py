@@ -194,6 +194,18 @@ class AccountMove(models.Model):
                 'impuestoNeto': impuesto_neto,
                 'montoTotalLinea': line.price_total,
             }
+            monto_bruto = line.price_unit * line.quantity
+            monto_descuento = monto_bruto - subtotal
+            if monto_descuento:
+                # TODO: confirmar contra la API de CRLibre el nombre exacto del
+                # campo de descuento por linea antes de enviarlo — se probo
+                # 'montoDescuento' contra el sandbox local (docs/superpowers/
+                # plans/2026-08-10-descuento-general-facturacion-hacienda.md,
+                # Task 3) y no se pudo confirmar que la API lo reconozca.
+                # Por ahora NO se envia el campo para evitar mandar un dato
+                # incorrecto sin detectarlo; montoTotal/subTotal quedan
+                # descuadrados en el XML resultante cuando hay descuento.
+                pass
             if impuesto_neto:
                 tarifa = int(round(line.tax_ids[:1].amount))
                 codigo_tarifa = L10N_CR_FE_TARIFA_IVA_CODES.get(tarifa)

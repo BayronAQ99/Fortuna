@@ -357,3 +357,18 @@ class TestAccountMoveMapping(TransactionCase):
         self.assertEqual(referencia[0]['fechaEmision'], '2026-07-01T10:00:00-06:00')
         self.assertEqual(referencia[0]['codigo'], '10')
         self.assertEqual(referencia[0]['razon'], 'Interés por mora en el pago')
+
+    def test_build_detalles_con_descuento_mantiene_montototal_bruto(self):
+        invoice = self._create_invoice_with_tax(13)
+        invoice.invoice_line_ids.write({'discount': 10.0})
+
+        detalle = invoice._l10n_cr_fe_build_detalles()[0]
+
+        # Documenta el estado conocido y aceptado de este hueco: montoTotal
+        # sigue siendo el bruto y no hay ninguna clave que explique la
+        # diferencia con subTotal todavia (ver TODO en el metodo). Este test
+        # existe para que, el dia que se agregue el campo real, falle aqui y
+        # obligue a actualizarlo en vez de quedar desactualizado en silencio.
+        self.assertEqual(detalle['montoTotal'], 1000.0)
+        self.assertEqual(detalle['subTotal'], 900.0)
+        self.assertNotIn('montoDescuento', detalle)
