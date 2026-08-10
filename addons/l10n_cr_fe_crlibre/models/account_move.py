@@ -587,8 +587,14 @@ class AccountMove(models.Model):
             root = ET.fromstring(respuesta_xml)
         except ET.ParseError:
             return respuesta_xml[:200]
-        detalle = root.find('.//DetalleMensaje')
-        return detalle.text if detalle is not None else respuesta_xml[:200]
+        # Los XML de respuesta de Hacienda declaran un namespace por defecto
+        # (xmlns="...mensajeHacienda"), asi que root.find('.//DetalleMensaje')
+        # nunca matchea (ElementTree exige el namespace en la busqueda). Se
+        # busca por nombre local ignorando el namespace en su lugar.
+        for el in root.iter():
+            if el.tag.rsplit('}', 1)[-1] == 'DetalleMensaje' and el.text:
+                return el.text
+        return respuesta_xml[:200]
 
     def _l10n_cr_fe_send_acceptance_email(self):
         self.ensure_one()
