@@ -36,14 +36,12 @@ class TestFacturaDescuentoWizard(TransactionCase):
         })
         wizard.action_aplicar()
 
-        self.assertEqual(self.move.amount_untaxed, 1800.0)
-        self.assertEqual(self.move.amount_tax, 270.0)
-        self.assertEqual(self.move.amount_total, 2070.0)
-        discount_lines = self.move.invoice_line_ids.filtered(
-            lambda l: l.product_id == self.move.company_id.sale_discount_product_id
-        )
-        self.assertEqual(len(discount_lines), 1)
-        self.assertEqual(discount_lines.price_unit, -200.0)
+        product_lines = self.move.invoice_line_ids.filtered(lambda l: l.display_type == 'product')
+        self.assertEqual(len(product_lines), 1)
+        self.assertEqual(product_lines.discount, 10.0)
+        self.assertAlmostEqual(self.move.amount_untaxed, 1800.0)
+        self.assertAlmostEqual(self.move.amount_tax, 1800.0 * self.tax.amount / 100)
+        self.assertAlmostEqual(self.move.amount_total, self.move.amount_untaxed + self.move.amount_tax)
 
     def test_rejects_percentage_over_100(self):
         with self.assertRaises(ValidationError):
