@@ -1,5 +1,7 @@
 import base64
 import logging
+import re
+import time
 
 import requests
 
@@ -8,6 +10,13 @@ from odoo import models
 _logger = logging.getLogger(__name__)
 
 TIMEOUT = 30
+# La API_Hacienda (CRLibre) local a veces devuelve una respuesta HTTP 200 con el
+# cuerpo vacio bajo el patron exacto de llamadas que hace este cliente (varias
+# peticiones en rafaga, con una llamada real a Hacienda de por medio antes de
+# firmar). No se identifico la causa exacta del lado del PHP; es transitorio -
+# el mismo request repetido inmediatamente despues normalmente funciona.
+RETRY_ATTEMPTS = 3
+RETRY_DELAY = 1.5
 
 
 class CrlibreApiError(Exception):
@@ -37,24 +46,34 @@ class CrlibreFeClient(models.AbstractModel):
         # como query string (ver clave/firmarXML/genXML/send). La API lee 'w' de
         # $_POST o $_GET indistintamente (www/api.php), asi que POST funciona para
         # todas las llamadas de este metodo.
-        data = dict(params or {})
-        data['w'] = w
-        data['r'] = r
+        payload = dict(params or {})
+        payload['w'] = w
+        payload['r'] = r
         url = self._get_base_url() + '/api.php'
-        try:
-            resp = requests.post(url, data=data, timeout=TIMEOUT)
-        except requests.RequestException as exc:
-            raise CrlibreApiError("No se pudo conectar con la API: %s" % exc)
-        if resp.status_code != 200:
-            raise CrlibreApiError("La API respondió HTTP %s" % resp.status_code)
-        try:
-            data = resp.json()
-        except ValueError:
-            raise CrlibreApiError("La API devolvió una respuesta no-JSON.")
-        # La API envuelve todo en {"status": "...", "resp": <datos>} (ver Task 1 / api-samples.md)
-        if not isinstance(data, dict) or data.get('status') != 'ok':
-            raise CrlibreApiError("La API respondió estado no-ok: %s" % data)
-        return data.get('resp')
+        error = None
+        for attempt in range(1, RETRY_ATTEMPTS + 1):
+            try:
+                resp = requests.post(url, data=payload, timeout=TIMEOUT)
+            except requests.RequestException as exc:
+                error = CrlibreApiError("No se pudo conectar con la API: %s" % exc)
+            else:
+                if resp.status_code != 200:
+                    raise CrlibreApiError("La API respondió HTTP %s" % resp.status_code)
+                try:
+                    data = resp.json()
+                except ValueError:
+                    error = CrlibreApiError("La API devolvió una respuesta no-JSON.")
+                else:
+                    # La API envuelve todo en {"status": "...", "resp": <datos>} (ver Task 1 / api-samples.md)
+                    if not isinstance(data, dict) or data.get('status') != 'ok':
+                        raise CrlibreApiError("La API respondió estado no-ok: %s" % data)
+                    return data.get('resp')
+            if attempt < RETRY_ATTEMPTS:
+                _logger.warning(
+                    "CRLibre API: intento %s/%s fallido para %s/%s (%s), reintentando...",
+                    attempt, RETRY_ATTEMPTS, w, r, error)
+                time.sleep(RETRY_DELAY)
+        raise error
 
     def get_clave(self, params):
         resp = self._call('clave', 'clave', params)
@@ -167,6 +186,24 @@ class CrlibreFeClient(models.AbstractModel):
             raise CrlibreApiError("Respuesta inesperada de 'firmarXML/firmar': %s" % resp)
         return base64.b64decode(resp['xmlFirmado']).decode('utf-8')
 
+    _STATUS_LINE_RE = re.compile(r'^HTTP/\S+\s+(\d+)')
+
+    def _parse_send_response(self, resp, r):
+        # La API_Hacienda no envuelve esto en {"httpStatus":..,"text":[...]} - el
+        # framework PHP descarta el codigo de estado y solo reenvia la lista cruda
+        # de la linea de estado + headers HTTP de la respuesta real de Hacienda
+        # (ver tools_reply en api/core/tools.php). Hay que parsear el codigo de la
+        # primera linea ("HTTP/2 202 ...") nosotros mismos.
+        if not isinstance(resp, list) or not resp:
+            raise CrlibreApiError("Respuesta inesperada de 'send/%s': %s" % (r, resp))
+        match = self._STATUS_LINE_RE.match(resp[0])
+        if not match:
+            raise CrlibreApiError("Respuesta inesperada de 'send/%s': %s" % (r, resp))
+        http_status = int(match.group(1))
+        if http_status not in (200, 202):
+            raise CrlibreApiError("Hacienda rechazó el envío (HTTP %s): %s" % (http_status, resp))
+        return {'http_status': http_status, 'raw': resp}
+
     def send_fe(self, token, clave, fecha_iso, emisor_tipo, emisor_num,
                 receptor_tipo, receptor_num, xml_firmado, environment):
         resp = self._call('send', 'json', {
@@ -180,12 +217,7 @@ class CrlibreFeClient(models.AbstractModel):
             'comprobanteXml': base64.b64encode(xml_firmado.encode('utf-8')).decode('ascii'),
             'client_id': self._CLIENT_ID_BY_ENVIRONMENT[environment],
         })
-        if not isinstance(resp, dict) or 'httpStatus' not in resp:
-            raise CrlibreApiError("Respuesta inesperada de 'send/json': %s" % resp)
-        http_status = resp['httpStatus']
-        if http_status not in (200, 202):
-            raise CrlibreApiError("Hacienda rechazó el envío (HTTP %s): %s" % (http_status, resp.get('text')))
-        return {'http_status': http_status, 'raw': resp.get('text') or []}
+        return self._parse_send_response(resp, 'json')
 
     def send_mr(self, token, clave, fecha_iso, emisor_tipo, emisor_num,
                 receptor_tipo, receptor_num, consecutivo_receptor, xml_firmado, environment):
@@ -201,12 +233,7 @@ class CrlibreFeClient(models.AbstractModel):
             'comprobanteXml': base64.b64encode(xml_firmado.encode('utf-8')).decode('ascii'),
             'client_id': self._CLIENT_ID_BY_ENVIRONMENT[environment],
         })
-        if not isinstance(resp, dict) or 'httpStatus' not in resp:
-            raise CrlibreApiError("Respuesta inesperada de 'send/sendMensaje': %s" % resp)
-        http_status = resp['httpStatus']
-        if http_status not in (200, 202):
-            raise CrlibreApiError("Hacienda rechazó el envío (HTTP %s): %s" % (http_status, resp.get('text')))
-        return {'http_status': http_status, 'raw': resp.get('text') or []}
+        return self._parse_send_response(resp, 'sendMensaje')
 
     def consultar_estado(self, token, clave, environment):
         resp = self._call('consultar', 'consultarCom', {

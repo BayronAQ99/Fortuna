@@ -51,6 +51,22 @@ class TestConsultarEstadoFe(TransactionCase):
         self.assertEqual(self.invoice.l10n_cr_fe_state, 'rechazado')
         self.assertEqual(self.invoice.l10n_cr_fe_motivo_rechazo, 'Cedula receptor invalida')
 
+    def test_consultar_estado_rechazado_sets_motivo_con_namespace_real(self):
+        # El XML real de Hacienda declara un namespace por defecto en la raiz;
+        # ver guia-reconexion-crlibre-hacienda.md / bug de root.find('.//DetalleMensaje').
+        xml = (
+            '<MensajeHacienda xmlns="https://cdn.comprobanteselectronicos.go.cr/'
+            'xml-schemas/v4.4/mensajeHacienda">'
+            '<DetalleMensaje>El certificado empleado se encuentra revocado.</DetalleMensaje>'
+            '</MensajeHacienda>')
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.CrlibreFeClient.get_hacienda_token',
+                   return_value='tok'), \
+             patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.CrlibreFeClient.consultar_estado',
+                   return_value={'ind_estado': 'rechazado', 'respuesta_xml': base64.b64encode(xml.encode()).decode()}):
+            self.invoice.action_l10n_cr_fe_consultar_estado()
+        self.assertEqual(self.invoice.l10n_cr_fe_state, 'rechazado')
+        self.assertEqual(self.invoice.l10n_cr_fe_motivo_rechazo, 'El certificado empleado se encuentra revocado.')
+
     def test_consultar_estado_pendiente_leaves_state_unchanged(self):
         with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.CrlibreFeClient.get_hacienda_token',
                    return_value='tok'), \

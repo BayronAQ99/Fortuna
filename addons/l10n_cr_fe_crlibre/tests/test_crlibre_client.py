@@ -1,4 +1,7 @@
 from unittest.mock import patch, MagicMock
+
+import requests
+
 from odoo.tests.common import TransactionCase, tagged
 from odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client import CrlibreApiError
 
@@ -43,6 +46,39 @@ class TestCrlibreClient(TransactionCase):
                    return_value=self._mock_response({}, status=500)):
             with self.assertRaises(CrlibreApiError):
                 self.client.get_clave({'tipoDocumento': 'FE'})
+
+    def _mock_non_json_response(self, status=200):
+        resp = MagicMock()
+        resp.status_code = status
+        resp.json.side_effect = ValueError("no JSON")
+        return resp
+
+    def test_non_json_response_retries_then_succeeds(self):
+        payload = {'status': 'ok', 'resp': {'clave': '5' * 50, 'consecutivo': '0' * 20}}
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.time.sleep'), \
+             patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
+                   side_effect=[self._mock_non_json_response(), self._mock_response(payload)]) as m:
+            result = self.client.get_clave({'tipoDocumento': 'FE'})
+        self.assertEqual(result['clave'], '5' * 50)
+        self.assertEqual(m.call_count, 2)
+
+    def test_non_json_response_exhausts_retries_raises(self):
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.time.sleep'), \
+             patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
+                   return_value=self._mock_non_json_response()) as m:
+            with self.assertRaises(CrlibreApiError):
+                self.client.get_clave({'tipoDocumento': 'FE'})
+        self.assertEqual(m.call_count, 3)
+
+    def test_connection_error_retries_then_succeeds(self):
+        payload = {'status': 'ok', 'resp': {'clave': '5' * 50, 'consecutivo': '0' * 20}}
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.time.sleep'), \
+             patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
+                   side_effect=[requests.exceptions.ConnectionError("boom"),
+                                self._mock_response(payload)]) as m:
+            result = self.client.get_clave({'tipoDocumento': 'FE'})
+        self.assertEqual(result['clave'], '5' * 50)
+        self.assertEqual(m.call_count, 2)
 
     def test_register_api_user_returns_session(self):
         payload = {'status': 'ok', 'resp': {'sessionKey': 'sk123', 'userName': 'empresa1', 'idUser': 5}}
@@ -138,8 +174,11 @@ class TestCrlibreClient(TransactionCase):
                 self.client.sign_xml('DC123', '1234', '<xml/>')
 
     def test_send_fe_parses_202_recibido(self):
+        # La API_Hacienda real no envuelve esto en {"httpStatus":..,"text":[...]} -
+        # 'resp' es directamente la lista cruda de linea de estado + headers HTTP
+        # que devolvio Hacienda (ver tools_reply en api/core/tools.php).
         raw_lines = ['HTTP/1.1 202 Accepted', 'Content-Type: application/json', '', '']
-        payload = {'status': 'ok', 'resp': {'httpStatus': 202, 'text': raw_lines}}
+        payload = {'status': 'ok', 'resp': raw_lines}
         with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
                    return_value=self._mock_response(payload)) as m:
             result = self.client.send_fe(
@@ -148,6 +187,7 @@ class TestCrlibreClient(TransactionCase):
                 receptor_tipo='01', receptor_num='102340567',
                 xml_firmado='<FacturaElectronica/>', environment='stag')
         self.assertEqual(result['http_status'], 202)
+        self.assertEqual(result['raw'], raw_lines)
         called_data = m.call_args.kwargs['data']
         self.assertEqual(called_data['w'], 'send')
         self.assertEqual(called_data['r'], 'json')
@@ -155,7 +195,18 @@ class TestCrlibreClient(TransactionCase):
         self.assertEqual(called_data['token'], 'tok')
 
     def test_send_fe_error_status_raises(self):
-        payload = {'status': 'ok', 'resp': {'httpStatus': 400, 'text': ['HTTP/1.1 400 Bad Request', '']}}
+        payload = {'status': 'ok', 'resp': ['HTTP/1.1 400 Bad Request', '']}
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
+                   return_value=self._mock_response(payload)):
+            with self.assertRaises(CrlibreApiError):
+                self.client.send_fe(
+                    token='tok', clave='5' * 50, fecha_iso='2026-07-06T09:00:00-06:00',
+                    emisor_tipo='01', emisor_num='702320717',
+                    receptor_tipo='01', receptor_num='102340567',
+                    xml_firmado='<FacturaElectronica/>', environment='stag')
+
+    def test_send_fe_unparseable_response_raises(self):
+        payload = {'status': 'ok', 'resp': {'unexpected': 'shape'}}
         with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
                    return_value=self._mock_response(payload)):
             with self.assertRaises(CrlibreApiError):
@@ -217,7 +268,7 @@ class TestCrlibreClient(TransactionCase):
 
     def test_send_mr_includes_consecutivo_receptor(self):
         raw_lines = ['HTTP/1.1 202 Accepted', 'Content-Type: application/json', '', '']
-        payload = {'status': 'ok', 'resp': {'httpStatus': 202, 'text': raw_lines}}
+        payload = {'status': 'ok', 'resp': raw_lines}
         with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
                    return_value=self._mock_response(payload)) as m:
             result = self.client.send_mr(
@@ -234,7 +285,7 @@ class TestCrlibreClient(TransactionCase):
         self.assertEqual(called_data['recp_numeroIdentificacion'], '3101123456')
 
     def test_send_mr_error_status_raises(self):
-        payload = {'status': 'ok', 'resp': {'httpStatus': 400, 'text': ['HTTP/1.1 400 Bad Request', '']}}
+        payload = {'status': 'ok', 'resp': ['HTTP/1.1 400 Bad Request', '']}
         with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.requests.post',
                    return_value=self._mock_response(payload)):
             with self.assertRaises(CrlibreApiError):

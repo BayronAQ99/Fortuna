@@ -36,20 +36,25 @@ class TestFacturaDescuentoWizard(TransactionCase):
         })
         wizard.action_aplicar()
 
-        self.assertEqual(self.move.amount_untaxed, 1800.0)
-        self.assertEqual(self.move.amount_tax, 270.0)
-        self.assertEqual(self.move.amount_total, 2070.0)
-        discount_lines = self.move.invoice_line_ids.filtered(
-            lambda l: l.product_id == self.move.company_id.sale_discount_product_id
-        )
-        self.assertEqual(len(discount_lines), 1)
-        self.assertEqual(discount_lines.price_unit, -200.0)
+        product_lines = self.move.invoice_line_ids.filtered(lambda l: l.display_type == 'product')
+        self.assertEqual(len(product_lines), 1)
+        self.assertEqual(product_lines.discount, 10.0)
+        self.assertAlmostEqual(self.move.amount_untaxed, 1800.0)
+        self.assertAlmostEqual(self.move.amount_tax, 1800.0 * self.tax.amount / 100)
+        self.assertAlmostEqual(self.move.amount_total, self.move.amount_untaxed + self.move.amount_tax)
 
     def test_rejects_percentage_over_100(self):
         with self.assertRaises(ValidationError):
             self.env['distribuidora.factura.descuento.wizard'].create({
                 'move_id': self.move.id,
                 'porcentaje': 150.0,
+            })
+
+    def test_rejects_percentage_of_exactly_100(self):
+        with self.assertRaises(ValidationError):
+            self.env['distribuidora.factura.descuento.wizard'].create({
+                'move_id': self.move.id,
+                'porcentaje': 100.0,
             })
 
     def test_rejects_zero_percentage(self):
@@ -64,3 +69,17 @@ class TestFacturaDescuentoWizard(TransactionCase):
             active_id=self.move.id
         ).create({'porcentaje': 10.0})
         self.assertEqual(wizard.move_id, self.move)
+
+    def test_action_aplicar_without_product_lines_raises(self):
+        from odoo.exceptions import UserError
+
+        empty_move = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner.id,
+        })
+        wizard = self.env['distribuidora.factura.descuento.wizard'].create({
+            'move_id': empty_move.id,
+            'porcentaje': 10.0,
+        })
+        with self.assertRaises(UserError):
+            wizard.action_aplicar()
