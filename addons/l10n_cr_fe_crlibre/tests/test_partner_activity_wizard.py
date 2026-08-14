@@ -90,3 +90,18 @@ class TestPartnerActivityWizard(TransactionCase):
             'wizard_id': wizard.id, 'codigo': '999999', 'descripcion': 'Nueva',
         })
         self.assertFalse(line.ya_agregada)
+
+    def test_flujo_completo_boton_cliente_hasta_varias_actividades(self):
+        action = self.env.ref('l10n_cr_fe_crlibre.action_l10n_cr_fe_partner_activity_wizard')
+        wizard = self.env['l10n_cr.fe.partner.activity.wizard'].with_context(
+            default_partner_id=self.partner.id).create({})
+        self.assertEqual(wizard.partner_id, self.partner)
+        with self._patch_buscar([
+            {'codigo': '561001', 'descripcion': 'Restaurantes y servicios móviles'},
+            {'codigo': '563001', 'descripcion': 'Bares, cantinas y tabernas'},
+        ]):
+            wizard.action_buscar()
+        wizard.result_ids[0].action_agregar()
+        wizard.result_ids[1].action_agregar()
+        self.assertEqual(len(self.partner.l10n_cr_fe_activity_ids), 2)
+        self.assertEqual(action['res_model'], 'l10n_cr.fe.partner.activity.wizard')

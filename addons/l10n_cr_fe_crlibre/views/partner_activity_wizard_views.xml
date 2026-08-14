@@ -1,0 +1,37 @@
+<odoo>
+    <record id="view_l10n_cr_fe_partner_activity_wizard_form" model="ir.ui.view">
+        <field name="name">l10n_cr.fe.partner.activity.wizard.form</field>
+        <field name="model">l10n_cr.fe.partner.activity.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Buscar actividades económicas">
+                <field name="partner_id" invisible="1"/>
+                <field name="searched" invisible="1"/>
+                <button name="action_buscar" string="Buscar" type="object"
+                        class="btn-primary" icon="fa-search"/>
+                <field name="result_ids" invisible="not searched">
+                    <list create="false" delete="false">
+                        <field name="codigo"/>
+                        <field name="descripcion"/>
+                        <field name="ya_agregada" column_invisible="1"/>
+                        <button name="action_agregar" type="object"
+                                string="Agregar" class="btn-link" icon="fa-plus"
+                                invisible="ya_agregada"/>
+                    </list>
+                </field>
+                <p invisible="not searched or result_ids">
+                    No se encontraron actividades económicas activas para este cliente.
+                </p>
+                <footer>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l10n_cr_fe_partner_activity_wizard" model="ir.actions.act_window">
+        <field name="name">Agregar Actividad Económica</field>
+        <field name="res_model">l10n_cr.fe.partner.activity.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
