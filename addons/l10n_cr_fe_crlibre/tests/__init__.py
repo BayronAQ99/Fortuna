@@ -18,4 +18,5 @@ from . import test_recepcion_proveedores_fe
 from . import test_proveedor_upload
 from . import test_proveedor_xml_parser
 from . import test_proveedor_email
+from . import test_partner_activity
 from . import test_partner_activity_client
