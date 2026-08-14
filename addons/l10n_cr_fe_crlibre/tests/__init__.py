@@ -20,3 +20,4 @@ from . import test_proveedor_xml_parser
 from . import test_proveedor_email
 from . import test_partner_activity
 from . import test_partner_activity_client
+from . import test_partner_activity_wizard
