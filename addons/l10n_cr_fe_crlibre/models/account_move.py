@@ -157,6 +157,9 @@ class AccountMove(models.Model):
             ('error', "Error"),
         ],
         string="Estado FE", default='draft', readonly=True, copy=False)
+    l10n_cr_fe_activity_id = fields.Many2one(
+        'l10n_cr.fe.partner.activity', string="Actividad económica",
+        domain="[('partner_id', '=', partner_id)]")
 
     def _l10n_cr_fe_get_config(self):
         self.ensure_one()
@@ -499,6 +502,11 @@ class AccountMove(models.Model):
 
         client = self.env['l10n_cr.fe.client']
         try:
+            if self.partner_id.l10n_cr_fe_activity_ids and not self.l10n_cr_fe_activity_id:
+                raise UserError(_(
+                    "El cliente '%s' tiene actividad económica registrada ante Hacienda. "
+                    "Debe elegir a cuál corresponde este comprobante."
+                ) % self.partner_id.name)
             if self.move_type == 'out_refund':
                 original = self.reversed_entry_id
                 if not original or original.l10n_cr_fe_state != 'aceptado':
