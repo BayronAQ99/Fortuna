@@ -1,6 +1,7 @@
 from . import cabys_client
 from . import crlibre_client
 from . import fe_config
+from . import partner_activity_client
 from . import product_template
 from . import res_partner
 from . import account_move
