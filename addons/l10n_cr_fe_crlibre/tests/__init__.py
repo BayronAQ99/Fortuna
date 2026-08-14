@@ -21,3 +21,4 @@ from . import test_proveedor_email
 from . import test_partner_activity
 from . import test_partner_activity_client
 from . import test_partner_activity_wizard
+from . import test_sale_order_activity

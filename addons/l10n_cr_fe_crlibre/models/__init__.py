@@ -6,4 +6,5 @@ from . import partner_activity_client
 from . import product_template
 from . import res_partner
 from . import account_move
+from . import sale_order
 from . import proveedor_email
