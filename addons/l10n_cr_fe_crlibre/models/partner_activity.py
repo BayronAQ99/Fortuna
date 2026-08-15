@@ -13,3 +13,7 @@ class L10nCrFePartnerActivity(models.Model):
         'UNIQUE (partner_id, code)',
         "Esta actividad económica ya está registrada para este cliente.",
     )
+
+    def _compute_display_name(self):
+        for activity in self:
+            activity.display_name = f"{activity.code} — {activity.description}"
