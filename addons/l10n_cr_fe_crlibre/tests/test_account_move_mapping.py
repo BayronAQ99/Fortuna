@@ -378,3 +378,17 @@ class TestAccountMoveMapping(TransactionCase):
         detalle = invoice._l10n_cr_fe_build_detalles()[0]
         self.assertEqual(detalle['precioUnitario'], 1000.0)
         self.assertEqual(detalle['montoTotal'], 1000.0)
+
+    def test_build_genxml_params_incluye_actividad_receptor(self):
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        self.invoice.l10n_cr_fe_activity_id = activity.id
+        detalles = self.invoice._l10n_cr_fe_build_detalles()
+        params = self.invoice._l10n_cr_fe_build_genxml_params('5' * 50, '0' * 20, detalles)
+        self.assertEqual(params['codigo_actividad_receptor'], '561001')
+
+    def test_build_genxml_params_sin_actividad_no_incluye_la_clave(self):
+        detalles = self.invoice._l10n_cr_fe_build_detalles()
+        params = self.invoice._l10n_cr_fe_build_genxml_params('5' * 50, '0' * 20, detalles)
+        self.assertNotIn('codigo_actividad_receptor', params)

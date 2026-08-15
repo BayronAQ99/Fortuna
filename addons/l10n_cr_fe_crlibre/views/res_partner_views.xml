@@ -8,6 +8,20 @@
                 <field name="l10n_cr_fe_identification_type"
                        invisible="not vat"/>
             </xpath>
+            <notebook position="inside">
+                <page string="Actividades Económicas ante Hacienda" name="l10n_cr_fe_activities">
+                    <field name="l10n_cr_fe_activity_ids">
+                        <list create="false" delete="true">
+                            <field name="code" string="Código"/>
+                            <field name="description" string="Descripción"/>
+                        </list>
+                    </field>
+                    <button name="%(action_l10n_cr_fe_partner_activity_wizard)d"
+                            type="action" string="Agregar Actividad Económica"
+                            class="btn-link" icon="fa-plus"
+                            context="{'default_partner_id': id}"/>
+                </page>
+            </notebook>
         </field>
     </record>
 </odoo>

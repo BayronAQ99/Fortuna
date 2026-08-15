@@ -18,3 +18,8 @@ from . import test_recepcion_proveedores_fe
 from . import test_proveedor_upload
 from . import test_proveedor_xml_parser
 from . import test_proveedor_email
+from . import test_partner_activity
+from . import test_partner_activity_client
+from . import test_partner_activity_wizard
+from . import test_sale_order_activity
+from . import test_sale_order_invoice_activity

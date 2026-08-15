@@ -3,3 +3,4 @@ from . import proveedor_upload
 from . import mr_motivo_wizard
 from . import account_debit_note
 from . import cabys_wizard
+from . import partner_activity_wizard
