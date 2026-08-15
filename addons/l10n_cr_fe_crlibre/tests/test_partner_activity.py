@@ -1,4 +1,3 @@
-from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -25,17 +24,17 @@ class TestPartnerActivity(TransactionCase):
         })
         self.assertEqual(len(self.partner.l10n_cr_fe_activity_ids), 2)
 
-    def test_invalid_code_length_raises(self):
-        with self.assertRaises(ValidationError):
-            self.env['l10n_cr.fe.partner.activity'].create({
-                'partner_id': self.partner.id, 'code': '123', 'description': 'x',
-            })
-
-    def test_invalid_code_non_digit_raises(self):
-        with self.assertRaises(ValidationError):
-            self.env['l10n_cr.fe.partner.activity'].create({
-                'partner_id': self.partner.id, 'code': 'ABCDEF', 'description': 'x',
-            })
+    def test_non_6_digit_code_from_hacienda_is_accepted(self):
+        # Hacienda's /fe/ae API returns activity codes in this exact
+        # non-6-digit format for at least some taxpayers (confirmed live,
+        # personas fisicas) - '6201.0' is a real value returned for a real
+        # cedula. This must not be rejected: the same value is already used,
+        # unvalidated, as this company's own economic_activity_code
+        # (l10n_cr.fe.config) and has been accepted by Hacienda's sandbox.
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '6201.0', 'description': 'Actividades de programación informática',
+        })
+        self.assertEqual(activity.code, '6201.0')
 
     def test_duplicate_code_same_partner_raises(self):
         self.env['l10n_cr.fe.partner.activity'].create({

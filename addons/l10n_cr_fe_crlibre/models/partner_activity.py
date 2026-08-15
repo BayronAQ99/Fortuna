@@ -1,9 +1,4 @@
-import re
-
-from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
-
-ACTIVITY_CODE_RE = re.compile(r'^\d{6}$')
+from odoo import fields, models
 
 
 class L10nCrFePartnerActivity(models.Model):
@@ -18,10 +13,3 @@ class L10nCrFePartnerActivity(models.Model):
         'UNIQUE (partner_id, code)',
         "Esta actividad económica ya está registrada para este cliente.",
     )
-
-    @api.constrains('code')
-    def _check_code(self):
-        for activity in self:
-            if not ACTIVITY_CODE_RE.match(activity.code or ''):
-                raise ValidationError(
-                    _("El código de actividad económica debe tener exactamente 6 dígitos."))
