@@ -48,3 +48,19 @@ class TestSaleOrderActivity(TransactionCase):
         order.partner_id = other_partner.id
         order._onchange_partner_id_l10n_cr_fe_activity()
         self.assertFalse(order.l10n_cr_fe_activity_id)
+
+    def test_confirm_with_activity_from_other_partner_raises(self):
+        """El onchange no corre en write()/imports — action_confirm debe
+        rechazar igual una actividad que quedó asignada a un partner distinto
+        del actual, para no filtrar el código de actividad equivocado en el
+        XML cuando la orden se facture."""
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        other_partner = self.env['res.partner'].create({'name': 'Otro Cliente'})
+        order = self._create_order(partner=other_partner)
+        # write() bypasses the onchange, simulating a stale activity surviving
+        # a partner change.
+        order.write({'l10n_cr_fe_activity_id': activity.id})
+        with self.assertRaises(UserError):
+            order.action_confirm()

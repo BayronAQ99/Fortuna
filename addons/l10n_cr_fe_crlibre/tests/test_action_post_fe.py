@@ -156,6 +156,39 @@ class TestActionPostFe(TransactionCase):
                 p.stop()
         self.assertEqual(invoice.l10n_cr_fe_state, 'enviado')
 
+    def test_action_post_does_not_block_when_activity_belongs_to_other_partner(self):
+        """Si el partner de la factura cambia (o se setea l10n_cr_fe_activity_id
+        vía write, saltándose el onchange), el envío no debe mandar el código de
+        actividad de OTRO cliente a Hacienda — debe fallar suave (error en
+        l10n_cr_fe_state/chatter) en vez de postear datos incorrectos."""
+        partner = self.env['res.partner'].create({'name': 'Hotel Demo', 'vat': '3101042624'})
+        other_partner = self.env['res.partner'].create({'name': 'Otro Cliente', 'vat': '3101099999'})
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': other_partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        product = self.env['product.product'].create({
+            'name': 'Habitación', 'l10n_cr_fe_cabys': '0111101000000'})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'company_id': self.company.id,
+            'partner_id': partner.id,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': product.id, 'quantity': 1, 'price_unit': 50000.0,
+                'name': 'Habitación', 'tax_ids': [(6, 0, [])],
+            })],
+        })
+        # write() bypasses the onchange, simulating a stale activity surviving
+        # a partner change (e.g. via _prepare_invoice copy or a direct write).
+        invoice.write({'l10n_cr_fe_activity_id': activity.id})
+        with patch('odoo.addons.l10n_cr_fe_crlibre.models.crlibre_client.CrlibreFeClient.get_clave',
+                   return_value={'clave': '5' * 50, 'consecutivo': '0' * 20}):
+            invoice.action_post()
+        self.assertEqual(invoice.state, 'posted')
+        self.assertEqual(invoice.l10n_cr_fe_state, 'error')
+        self.assertTrue(any(
+            'no pertenece al cliente' in (msg.body or '')
+            for msg in invoice.message_ids))
+
     def test_action_post_ignores_vendor_bills(self):
         partner = self.env['res.partner'].create({'name': 'Proveedor Demo'})
         bill = self.env['account.move'].create({

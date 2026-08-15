@@ -8,5 +8,6 @@ access_l10n_cr_fe_proveedor_email_admin,l10n_cr.fe.proveedor.email.admin,model_l
 access_l10n_cr_fe_cabys_wizard,l10n_cr.fe.cabys.wizard,model_l10n_cr_fe_cabys_wizard,account.group_account_invoice,1,1,1,1
 access_l10n_cr_fe_cabys_wizard_line,l10n_cr.fe.cabys.wizard.line,model_l10n_cr_fe_cabys_wizard_line,account.group_account_invoice,1,1,1,1
 access_l10n_cr_fe_partner_activity,l10n_cr.fe.partner.activity,model_l10n_cr_fe_partner_activity,account.group_account_invoice,1,1,1,1
+access_l10n_cr_fe_partner_activity_user,l10n_cr.fe.partner.activity.user,model_l10n_cr_fe_partner_activity,base.group_user,1,0,0,0
 access_l10n_cr_fe_partner_activity_wizard,l10n_cr.fe.partner.activity.wizard,model_l10n_cr_fe_partner_activity_wizard,account.group_account_invoice,1,1,1,1
 access_l10n_cr_fe_partner_activity_wizard_line,l10n_cr.fe.partner.activity.wizard.line,model_l10n_cr_fe_partner_activity_wizard_line,account.group_account_invoice,1,1,1,1

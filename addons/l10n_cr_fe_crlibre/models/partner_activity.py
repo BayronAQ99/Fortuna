@@ -1,9 +1,10 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class L10nCrFePartnerActivity(models.Model):
     _name = 'l10n_cr.fe.partner.activity'
     _description = "Actividad económica registrada ante Hacienda de un cliente"
+    _rec_names_search = ['code', 'description']
 
     partner_id = fields.Many2one('res.partner', required=True, ondelete='cascade')
     code = fields.Char(string="Código", required=True)
@@ -14,6 +15,7 @@ class L10nCrFePartnerActivity(models.Model):
         "Esta actividad económica ya está registrada para este cliente.",
     )
 
+    @api.depends('code', 'description')
     def _compute_display_name(self):
         for activity in self:
             activity.display_name = f"{activity.code} — {activity.description}"

@@ -367,6 +367,29 @@ class TestRecepcionProveedoresFe(TransactionCase):
         self.assertEqual(bill.l10n_cr_fe_state, 'enviado')
         self.assertEqual(bill.state, 'draft')
 
+    def test_aceptar_total_not_blocked_when_vendor_partner_has_activities(self):
+        """El campo l10n_cr_fe_activity_id/actividad económica solo aplica a
+        Factura/Nota de Crédito de venta (fuera de alcance para Mensaje
+        Receptor). El check no debe bloquear un Mensaje Receptor solo porque
+        el proveedor (que no tiene el campo visible en la UI para este
+        move_type) tenga actividades económicas registradas -- nada en la
+        pantalla de "Actividades Económicas ante Hacienda" del partner
+        distingue cliente de proveedor."""
+        self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        bill = self._create_bill()
+        patchers = self._patch_full_success()
+        for p in patchers:
+            p.start()
+        try:
+            bill.action_l10n_cr_fe_aceptar_total()
+        finally:
+            for p in patchers:
+                p.stop()
+        self.assertEqual(bill.l10n_cr_fe_state, 'enviado')
+        self.assertEqual(bill.state, 'posted')
+
     def test_tipo_documento_resolves_per_decision(self):
         bill = self._create_bill()
         bill.l10n_cr_fe_mr_decision = 'aceptado'

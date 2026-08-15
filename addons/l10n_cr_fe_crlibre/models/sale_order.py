@@ -21,6 +21,10 @@ class SaleOrder(models.Model):
                     "El cliente '%s' tiene actividades económicas registradas ante Hacienda. "
                     "Debe elegir a cuál corresponde esta orden antes de confirmarla."
                 ) % order.partner_id.name)
+            if order.l10n_cr_fe_activity_id and order.l10n_cr_fe_activity_id.partner_id != order.partner_id:
+                raise UserError(_(
+                    "La actividad económica seleccionada no pertenece al cliente '%s'."
+                ) % order.partner_id.name)
         return super().action_confirm()
 
     def _prepare_invoice(self):

@@ -83,6 +83,25 @@ class TestTiqueteElectronicoFe(TransactionCase):
                 p.stop()
         self.assertEqual(tiquete.l10n_cr_fe_state, 'enviado')
 
+    def test_action_post_sends_tiquete_when_partner_has_activities(self):
+        """El código de actividad del receptor no se envía nunca en un
+        Tiquete Electrónico (omitir_receptor='true', sin datos de receptor),
+        así que el check de actividad económica obligatoria no debe bloquear
+        un Tiquete solo porque el partner tenga actividades registradas."""
+        self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        tiquete = self._create_tiquete()
+        patchers = self._patch_full_success()
+        for p in patchers:
+            p.start()
+        try:
+            tiquete.action_post()
+        finally:
+            for p in patchers:
+                p.stop()
+        self.assertEqual(tiquete.l10n_cr_fe_state, 'enviado')
+
     def test_action_post_blocks_credit_note_on_tiquete_original(self):
         tiquete = self._create_tiquete()
         tiquete.write({'l10n_cr_fe_clave': '5' * 50, 'l10n_cr_fe_state': 'aceptado'})

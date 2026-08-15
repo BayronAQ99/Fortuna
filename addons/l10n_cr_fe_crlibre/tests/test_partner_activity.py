@@ -45,6 +45,24 @@ class TestPartnerActivity(TransactionCase):
                 'partner_id': self.partner.id, 'code': '561001', 'description': 'Duplicado',
             })
 
+    def test_display_name_renders_as_code_dash_description(self):
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        self.assertEqual(activity.display_name, '561001 — Restaurantes')
+
+    def test_name_search_matches_partial_description(self):
+        activity = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '561001', 'description': 'Restaurantes',
+        })
+        other = self.env['l10n_cr.fe.partner.activity'].create({
+            'partner_id': self.partner.id, 'code': '563001', 'description': 'Bares',
+        })
+        result = self.env['l10n_cr.fe.partner.activity'].name_search('restaur')
+        result_ids = [r[0] for r in result]
+        self.assertIn(activity.id, result_ids)
+        self.assertNotIn(other.id, result_ids)
+
     def test_same_code_different_partners_allowed(self):
         other_partner = self.env['res.partner'].create({'name': 'Otro Cliente'})
         self.env['l10n_cr.fe.partner.activity'].create({
