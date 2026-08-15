@@ -314,6 +314,8 @@ class AccountMove(models.Model):
             params['receptor_nombre'] = self.partner_id.name or ''
             params['receptor_tipo_identif'] = self.partner_id.l10n_cr_fe_identification_type or '01'
             params['receptor_num_identif'] = self.partner_id.vat.replace('-', '').strip()
+            if self.l10n_cr_fe_activity_id:
+                params['codigo_actividad_receptor'] = self.l10n_cr_fe_activity_id.code
         if self.move_type == 'out_refund':
             original = self.reversed_entry_id
             params['informacion_referencia'] = json.dumps([{
