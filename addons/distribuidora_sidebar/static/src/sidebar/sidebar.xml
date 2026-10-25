@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+    <t t-name="distribuidora_sidebar.Sidebar">
+        <div class="o_distribuidora_sidebar d-print-none">
+            <div class="o_distribuidora_sidebar_brand">
+                <span class="o_distribuidora_sidebar_logo">F</span>
+                <span class="o_distribuidora_sidebar_brandname">Fortuna</span>
+            </div>
+            <div class="o_distribuidora_sidebar_scroll">
+                <t t-foreach="apps" t-as="app" t-key="app.id">
+                    <a
+                        href="#"
+                        class="o_distribuidora_sidebar_row"
+                        t-att-class="{ o_active: state.currentAppId === app.id }"
+                        t-on-click="(ev) => this.onClickApp(app, ev)"
+                    >
+                        <span class="o_distribuidora_sidebar_icon">
+                            <img t-if="app.webIconData" t-att-src="app.webIconData" alt=""/>
+                            <t t-else="" t-esc="(app.name || '?').charAt(0)"/>
+                        </span>
+                        <span class="o_distribuidora_sidebar_label" t-esc="app.name"/>
+                    </a>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

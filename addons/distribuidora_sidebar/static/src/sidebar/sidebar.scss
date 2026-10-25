@@ -1,0 +1,164 @@
+$o-distribuidora-sidebar-width: 264px;
+$o-distribuidora-sidebar-bg: #71639e;
+
+.o_distribuidora_sidebar {
+    display: none;
+}
+
+@media (min-width: 992px) {
+    .o_distribuidora_sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 1030;
+        width: $o-distribuidora-sidebar-width;
+        display: flex;
+        flex-direction: column;
+        background: $o-distribuidora-sidebar-bg;
+        font-size: 13px;
+    }
+
+    // Make room for the fixed sidebar; the rest of the webclient layout
+    // (navbar, action manager, etc.) is untouched, only shifted right.
+    .o_web_client {
+        padding-left: $o-distribuidora-sidebar-width;
+    }
+
+    // The sidebar only replaces the app-switcher icon (the grid button).
+    // The current app's sections/subsections stay in Odoo's own horizontal
+    // SectionsMenu and breadcrumb, unchanged.
+    .o_main_navbar {
+        .o_navbar_apps_menu {
+            display: none !important;
+        }
+    }
+}
+
+.o_distribuidora_sidebar_brand {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, .14);
+}
+
+.o_distribuidora_sidebar_logo {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 8px;
+    background: #fff;
+    color: $o-distribuidora-sidebar-bg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.o_distribuidora_sidebar_brandname {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.o_distribuidora_sidebar_scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.o_distribuidora_sidebar_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    color: rgba(255, 255, 255, .8);
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+
+    &:hover {
+        background: rgba(255, 255, 255, .08);
+        color: #fff;
+        text-decoration: none;
+    }
+
+    &.o_active {
+        background: rgba(255, 255, 255, .18);
+        border-left-color: #fff;
+        color: #fff;
+        font-weight: 600;
+    }
+}
+
+.o_distribuidora_sidebar_label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// Same treatment as the brand logo chip: a white rounded square keeps every
+// app icon legible on the purple background, regardless of that icon's own
+// colors. Apps without a configured web_icon fall back to their initial.
+.o_distribuidora_sidebar_icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border-radius: 6px;
+    background: #fff;
+    color: $o-distribuidora-sidebar-bg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    overflow: hidden;
+
+    img {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+    }
+}
+
+// Odoo's horizontal SectionsMenu (the app's sections/subsections, below the
+// breadcrumb) already renders sections-with-children as a dropdown toggle,
+// but its native caret is too subtle to read as "this opens more options".
+// Only buttons with children get the `dropdown-toggle` class in that menu,
+// so this naturally scopes to exactly those — sections without children are
+// unaffected. Drawn with plain borders (no icon-font dependency) so it
+// always renders.
+.o_main_navbar .o_menu_sections .dropdown-toggle::after {
+    content: "" !important;
+    display: inline-block !important;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    // Set every border longhand with !important explicitly (not the
+    // `border` shorthand): an !important shorthand always beats a later
+    // non-important longhand in the same rule, which is what made the
+    // first version of this fix invisible (border-right/border-bottom
+    // never actually applied over an earlier `border: none !important`).
+    border-style: solid !important;
+    border-width: 0 1.5px 1.5px 0 !important;
+    border-color: currentColor !important;
+    transform: rotate(45deg);
+    transition: transform .15s ease-in-out;
+    opacity: .85;
+}
+
+.o_main_navbar .o_menu_sections .dropdown-toggle.show::after {
+    transform: rotate(225deg);
+}
