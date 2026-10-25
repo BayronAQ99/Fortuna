@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+    <t t-name="distribuidora_chatter_toggle.ChatterToggle">
+        <button
+            t-if="state.hasChatter"
+            type="button"
+            class="o_distribuidora_chatter_bubble"
+            t-att-class="{ o_open: state.isOpen }"
+            t-att-title="state.isOpen ? 'Cerrar historial' : 'Ver historial (chatter)'"
+            t-on-click="onClickToggle"
+        >
+            <i t-if="!state.isOpen" class="fa fa-comments" aria-hidden="true"/>
+            <i t-else="" class="fa fa-times" aria-hidden="true"/>
+        </button>
+    </t>
+
+</templates>

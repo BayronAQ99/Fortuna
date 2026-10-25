@@ -4,7 +4,7 @@
     'category': 'Sales/Sales',
     'summary': "Renombrar y ocultar menus nativos para esta empresa",
     'author': "Distribuidora",
-    'depends': ['contacts', 'sale_management', 'point_of_sale', 'crm'],
+    'depends': ['contacts', 'sale_management', 'point_of_sale', 'crm', 'mail'],
     'data': [
         'data/menu_overrides.xml',
     ],

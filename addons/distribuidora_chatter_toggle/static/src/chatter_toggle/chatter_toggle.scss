@@ -1,0 +1,71 @@
+// The invoice/record sheet must stay exactly the same size and position
+// whether the chatter is open or closed - it's no longer a flex sibling
+// that grows/shrinks the sheet's available width (that's what caused the
+// earlier open-state button/statusbar wrapping bug). Always centered at the
+// same wide max-width.
+.o_content .o_form_sheet_bg {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: 1600px !important;
+}
+
+// The chatter itself becomes a floating drawer pinned to the right edge of
+// the viewport, on top of the content, instead of a flex item in the normal
+// layout flow (mail/static/src/chatter/web/form_renderer.scss normally
+// gives ".o-aside" flex-grow/shrink + a calculated width - position:fixed
+// takes it out of that flow entirely, which is what lets the sheet stay
+// static). Slides in/out via transform instead of display:none so it
+// animates, and starts right below the top navbar (46px, see
+// web/static/src/webclient/navbar/navbar.variables.scss $o-navbar-height)
+// since html/body never scroll - only .o_content does - so a fixed
+// position lines up with the navbar exactly.
+.o-mail-Form-chatter {
+    position: fixed !important;
+    top: 46px;
+    right: 0;
+    bottom: 0;
+    left: auto !important;
+    z-index: 1029;
+    width: 420px !important;
+    max-width: 90vw;
+    margin: 0 !important;
+    padding: map-get($spacers, 3) !important;
+    background-color: $o-webclient-background-color;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, .15);
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform .2s ease-in-out;
+
+    body.o-distribuidora-chatter-open & {
+        transform: translateX(0);
+    }
+}
+
+.o_distribuidora_chatter_bubble {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1030;
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 50%;
+    background: #71639e;
+    color: #fff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(30, 20, 50, .28);
+    cursor: pointer;
+    transition: background-color .15s, transform .15s;
+
+    &:hover {
+        background: #5c5081;
+        transform: scale(1.05);
+    }
+
+    &.o_open {
+        background: #5c5081;
+    }
+}
